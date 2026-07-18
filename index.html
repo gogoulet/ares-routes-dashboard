@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ares World - Suivi des Routes</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        #map { height: 450px; width: 100%; z-index: 1; }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 font-sans">
+
+    <div class="container mx-auto p-4 space-y-6">
+        
+        <!-- Header -->
+        <header class="flex justify-between items-center border-b border-slate-700 pb-4">
+            <div>
+                <h1 class="text-2xl font-bold tracking-wide text-amber-500">ARES OPERATIONAL ROUTE DASHBOARD</h1>
+                <p class="text-xs text-slate-400">Gestion et état de santé des couloirs logistiques</p>
+            </div>
+            <div class="text-right">
+                <span class="inline-flex items-center rounded-md bg-slate-800 px-3 py-1 text-xs font-medium text-slate-400 ring-1 ring-inset ring-slate-700">Ares World & Opsec</span>
+            </div>
+        </header>
+
+        <!-- Main Content Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            <!-- Left: Map & Table (2/3 width) -->
+            <div class="lg:col-span-2 space-y-6">
+                <!-- Map Card -->
+                <div class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden shadow-xl">
+                    <div class="p-4 bg-slate-800 border-b border-slate-700 flex justify-between items-center">
+                        <h2 class="font-semibold text-sm uppercase tracking-wider text-slate-300">Cartographie Mondiale des Flux</h2>
+                        <span class="text-xs text-slate-500">Tracés dynamiques par route</span>
+                    </div>
+                    <div id="map"></div>
+                </div>
+
+                <!-- Table Card -->
+                <div class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden shadow-xl">
+                    <div class="p-4 border-b border-slate-700">
+                        <h2 class="font-semibold text-sm uppercase tracking-wider text-slate-300">Registre des Routes Actives</h2>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-slate-800 text-slate-400 text-xs uppercase tracking-wider border-b border-slate-700">
+                                    <th class="p-4">Route</th>
+                                    <th class="p-4 text-center">Couleur</th>
+                                    <th class="p-4">Statut</th>
+                                    <th class="p-4">Contact d'Urgence</th>
+                                    <th class="p-4 text-right">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="routeTableBody" class="divide-y divide-slate-700 text-sm">
+                                <!-- Injecté par JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right: Add Route Form (1/3 width) -->
+            <div class="space-y-6">
+                <div class="bg-slate-800 rounded-xl border border-slate-700 p-5 shadow-xl sticky top-6">
+                    <h2 class="font-semibold text-sm uppercase tracking-wider text-slate-300 mb-4 pb-2 border-b border-slate-700">Ajouter un Couloir Logistique</h2>
+                    
+                    <form id="routeForm" class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1">Nom de la Route</label>
+                            <input type="text" id="routeName" placeholder="Ex: Myanmar -> Chine" required class="w-full rounded-lg bg-slate-900 border border-slate-700 p-2.5 text-sm text-white focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="block text-xs font-medium text-slate-400 mb-1">Lat Départ</label>
+                                <input type="number" step="any" id="latStart" placeholder="21.91" required class="w-full rounded-lg bg-slate-900 border border-slate-700 p-2.5 text-sm text-white focus:outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-400 mb-1">Lng Départ</label>
+                                <input type="number" step="any" id="lngStart" placeholder="95.95" required class="w-full rounded-lg bg-slate-900 border border-slate-700 p-2.5 text-sm text-white focus:outline-none">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="block text-xs font-medium text-slate-400 mb-1">Lat Arrivée</label>
+                                <input type="number" step="any" id="latEnd" placeholder="39.90" required class="w-full rounded-lg bg-slate-900 border border-slate-700 p-2.5 text-sm text-white focus:outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-400 mb-1">Lng Arrivée</label>
+                                <input type="number" step="any" id="lngEnd" placeholder="116.40" required class="w-full rounded-lg bg-slate-900 border border-slate-700 p-2.5 text-sm text-white focus:outline-none">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="block text-xs font-medium text-slate-400 mb-1">Couleur Tracé</label>
+                                <input type="color" id="routeColor" value="#3b82f6" class="w-full h-10 rounded-lg bg-slate-900 border border-slate-700 p-1 cursor-pointer">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-400 mb-1">État de Santé</label>
+                                <select id="routeStatus" class="w-full h-10 rounded-lg bg-slate-900 border border-slate-700 px-2 text-sm text-white focus:outline-none">
+                                    <option value="vert">Vert (Opérationnel)</option>
+                                    <option value="jaune">Jaune (Alerte / Ralenti)</option>
+                                    <option value="rouge">Rouge (Compromis / Bloqué)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1">Contact Référent (Point Focal)</label>
+                            <input type="text" id="routeContact" placeholder="Nom / Signal / Fréquence" required class="w-full rounded-lg bg-slate-900 border border-slate-700 p-2.5 text-sm text-white focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                        </div>
+
+                        <button type="submit" class="w-full bg-amber-600 hover:bg-amber-500 text-white font-medium rounded-lg text-sm px-5 py-2.5 text-center transition-colors">
+                            Injecter la Route
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Script Logique -->
+    <script>
+        // Initialisation de la carte mondiale (Centrée par défaut sur un point central)
+        const map = L.map('map').setView([20, 0], 2);
+        
+        // Thème de carte sombre (CartoDB DarkMatter) pour coller à l'esthétique Opsec
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; OpenStreetMap &copy; CARTO'
+        }).addTo(map);
+
+        // Données initiales de démonstration si le LocalStorage est vide
+        const defaultRoutes = [
+            { id: 1, name: "Myanmar -> Chine (Secteur Nord)", start: [21.91, 95.95], end: [25.04, 102.70], color: "#ff00ff", status: "vert", contact: "Op_Alpha (Signal: +1 418...)" },
+            { id: 2, name: "Mexique -> Canada (Transit Ouest)", start: [25.68, -100.31], end: [45.50, -73.56], color: "#00f0ff", status: "jaune", contact: "Log_Bravo (Secure Desk)" },
+            { id: 3, name: "Honduras -> Mexique (Couloir Sud)", start: [14.10, -87.21], end: [16.75, -93.11], color: "#ffff00", status: "rouge", contact: "Local_Charlie (Sat-Phone #4)" }
+        ];
+
+        let routes = JSON.parse(localStorage.getItem('ares_routes')) || defaultRoutes;
+        let mapLayers = [];
+
+        function saveAndRender() {
+            localStorage.setItem('ares_routes', JSON.stringify(routes));
+            renderDashboard();
+        }
+
+        function deleteRoute(id) {
+            routes = routes.filter(r => r.id !== id);
+            saveAndRender();
+        }
+
+        function renderDashboard() {
+            // 1. Nettoyer la carte
+            mapLayers.forEach(layer => map.removeLayer(layer));
+            mapLayers = [];
+
+            // 2. Nettoyer le tableau
+            const tbody = document.getElementById('routeTableBody');
+            tbody.innerHTML = '';
+
+            // 3. Boucler sur les routes
+            routes.forEach(route => {
+                // --- AJOUT SUR LA CARTE ---
+                // Marqueur Départ
+                const startMarker = L.circleMarker(route.start, { radius: 5, color: '#ffffff', fillColor: route.color, fillOpacity: 1 }).addTo(map)
+                    .bindPopup(`<b>Départ:</b> ${route.name}`);
+                
+                // Marqueur Arrivée
+                const endMarker = L.circleMarker(route.end, { radius: 6, color: route.color, fillColor: '#000000', fillOpacity: 0.7 }).addTo(map)
+                    .bindPopup(`<b>Destination:</b> ${route.name}`);
+
+                // Ligne de transit (Polyline)
+                const polyline = L.polyline([route.start, route.end], {
+                    color: route.color,
+                    weight: 3,
+                    opacity: 0.8,
+                    dashArray: route.status === 'jaune' ? '5, 10' : route.status === 'rouge' ? '1, 10' : null
+                }).addTo(map).bindPopup(`<b>Route:</b> ${route.name}<br><b>Status:</b> ${route.status.toUpperCase()}<br><b>Contact:</b> ${route.contact}`);
+
+                mapLayers.push(startMarker, endMarker, polyline);
+
+                // --- AJOUT DANS LE TABLEAU ---
+                const statusColors = {
+                    vert: 'bg-green-500/20 text-green-400 border-green-500/30',
+                    jaune: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
+                    rouge: 'bg-red-500/20 text-red-400 border-red-500/30'
+                };
+
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-700/50 transition-colors";
+                tr.innerHTML = `
+                    <td class="p-4 font-medium text-slate-200">${route.name}</td>
+                    <td class="p-4 text-center">
+                        <span class="inline-block w-4 h-4 rounded-full border border-slate-600" style="background-color: ${route.color}"></span>
+                    </td>
+                    <td class="p-4">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${statusColors[route.status]}">
+                            <span class="w-1.5 h-1.5 rounded-full mr-1.5" style="background-color: ${route.status === 'vert' ? '#4ade80' : route.status === 'jaune' ? '#facc15' : '#f87171'}"></span>
+                            ${route.status.toUpperCase()}
+                        </span>
+                    </td>
+                    <td class="p-4 text-slate-300 font-mono text-xs">${route.contact}</td>
+                    <td class="p-4 text-right">
+                        <button onclick="deleteRoute(${route.id})" class="text-xs text-red-400 hover:text-red-300 font-medium cursor-pointer">Supprimer</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Gestion de la soumission du formulaire (Ajout de route)
+        document.getElementById('routeForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const newRoute = {
+                id: Date.now(),
+                name: document.getElementById('routeName').value,
+                start: [parseFloat(document.getElementById('latStart').value), parseFloat(document.getElementById('lngStart').value)],
+                end: [parseFloat(document.getElementById('latEnd').value), parseFloat(document.getElementById('lngEnd').value)],
+                color: document.getElementById('routeColor').value,
+                status: document.getElementById('routeStatus').value,
+                contact: document.getElementById('routeContact').value
+            };
+
+            routes.push(newRoute);
+            saveAndRender();
+            
+            // Réinitialiser le formulaire (sauf les couleurs/status par confort)
+            document.getElementById('routeName').value = '';
+            document.getElementById('latStart').value = '';
+            document.getElementById('lngStart').value = '';
+            document.getElementById('latEnd').value = '';
+            document.getElementById('lngEnd').value = '';
+            document.getElementById('routeContact').value = '';
+        });
+
+        // Premier rendu au chargement
+        renderDashboard();
+    </script>
+</body>
+</html>
