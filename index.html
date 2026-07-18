@@ -80,23 +80,23 @@
 
                         <div class="grid grid-cols-2 gap-2">
                             <div>
-                                <label class="block text-xs font-medium text-slate-400 mb-1">Lat Départ</label>
+                                <label class="block text-xs font-medium text-slate-400 mb-1">Lat Départ (Y)</label>
                                 <input type="number" step="any" id="latStart" placeholder="21.91" required class="w-full rounded-lg bg-slate-900 border border-slate-700 p-2.5 text-sm text-white focus:outline-none">
                             </div>
                             <div>
-                                <label class="block text-xs font-medium text-slate-400 mb-1">Lng Départ</label>
+                                <label class="block text-xs font-medium text-slate-400 mb-1">Lng Départ (X)</label>
                                 <input type="number" step="any" id="lngStart" placeholder="95.95" required class="w-full rounded-lg bg-slate-900 border border-slate-700 p-2.5 text-sm text-white focus:outline-none">
                             </div>
                         </div>
 
                         <div class="grid grid-cols-2 gap-2">
                             <div>
-                                <label class="block text-xs font-medium text-slate-400 mb-1">Lat Arrivée</label>
-                                <input type="number" step="any" id="latEnd" placeholder="39.90" required class="w-full rounded-lg bg-slate-900 border border-slate-700 p-2.5 text-sm text-white focus:outline-none">
+                                <label class="block text-xs font-medium text-slate-400 mb-1">Lat Arrivée (Y)</label>
+                                <input type="number" step="any" id="latEnd" placeholder="25.04" required class="w-full rounded-lg bg-slate-900 border border-slate-700 p-2.5 text-sm text-white focus:outline-none">
                             </div>
                             <div>
-                                <label class="block text-xs font-medium text-slate-400 mb-1">Lng Arrivée</label>
-                                <input type="number" step="any" id="lngEnd" placeholder="116.40" required class="w-full rounded-lg bg-slate-900 border border-slate-700 p-2.5 text-sm text-white focus:outline-none">
+                                <label class="block text-xs font-medium text-slate-400 mb-1">Lng Arrivée (X)</label>
+                                <input type="number" step="any" id="lngEnd" placeholder="102.70" required class="w-full rounded-lg bg-slate-900 border border-slate-700 p-2.5 text-sm text-white focus:outline-none">
                             </div>
                         </div>
 
@@ -120,7 +120,7 @@
                             <input type="text" id="routeContact" placeholder="Nom / Signal / Fréquence" required class="w-full rounded-lg bg-slate-900 border border-slate-700 p-2.5 text-sm text-white focus:ring-2 focus:ring-amber-500 focus:outline-none">
                         </div>
 
-                        <button type="submit" class="w-full bg-amber-600 hover:bg-amber-500 text-white font-medium rounded-lg text-sm px-5 py-2.5 text-center transition-colors">
+                        <button type="submit" class="w-full bg-amber-600 hover:bg-amber-500 text-white font-medium rounded-lg text-sm px-5 py-2.5 text-center transition-colors cursor-pointer">
                             Injecter la Route
                         </button>
                     </form>
@@ -130,21 +130,21 @@
         </div>
     </div>
 
-    <!-- Script Logique -->
+    <!-- Logic Script -->
     <script>
-        // Initialisation de la carte mondiale (Centrée par défaut sur un point central)
+        // Initialisation de la carte mondiale
         const map = L.map('map').setView([20, 0], 2);
         
-        // Thème de carte sombre (CartoDB DarkMatter) pour coller à l'esthétique Opsec
+        // Thème de carte sombre (CartoDB DarkMatter)
         L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
             attribution: '&copy; OpenStreetMap &copy; CARTO'
         }).addTo(map);
 
-        // Données initiales de démonstration si le LocalStorage est vide
+        // Données de démonstration avec format strict [Latitude, Longitude]
         const defaultRoutes = [
-            { id: 1, name: "Myanmar -> Chine (Secteur Nord)", start: [21.91, 95.95], end: [25.04, 102.70], color: "#ff00ff", status: "vert", contact: "Op_Alpha (Signal: +1 418...)" },
+            { id: 1, name: "Myanmar -> Chine (Secteur Nord)", start: [21.91, 95.95], end: [25.04, 102.70], color: "#ff00ff", status: "vert", contact: "Op_Alpha (Signal)" },
             { id: 2, name: "Mexique -> Canada (Transit Ouest)", start: [25.68, -100.31], end: [45.50, -73.56], color: "#00f0ff", status: "jaune", contact: "Log_Bravo (Secure Desk)" },
-            { id: 3, name: "Honduras -> Mexique (Couloir Sud)", start: [14.10, -87.21], end: [16.75, -93.11], color: "#ffff00", status: "rouge", contact: "Local_Charlie (Sat-Phone #4)" }
+            { id: 3, name: "Honduras -> Mexique (Couloir Sud)", start: [14.10, -87.21], end: [16.75, -93.11], color: "#ffff00", status: "rouge", contact: "Local_Charlie (Sat-Phone)" }
         ];
 
         let routes = JSON.parse(localStorage.getItem('ares_routes')) || defaultRoutes;
@@ -161,17 +161,17 @@
         }
 
         function renderDashboard() {
-            // 1. Nettoyer la carte
+            // Nettoyer la carte
             mapLayers.forEach(layer => map.removeLayer(layer));
             mapLayers = [];
 
-            // 2. Nettoyer le tableau
+            // Nettoyer le tableau
             const tbody = document.getElementById('routeTableBody');
             tbody.innerHTML = '';
 
-            // 3. Boucler sur les routes
+            // Boucler sur les routes
             routes.forEach(route => {
-                // --- AJOUT SUR LA CARTE ---
+                // --- AJOUT SUR LA CARTE (Format strict : [Lat, Lng]) ---
                 // Marqueur Départ
                 const startMarker = L.circleMarker(route.start, { radius: 5, color: '#ffffff', fillColor: route.color, fillOpacity: 1 }).addTo(map)
                     .bindPopup(`<b>Départ:</b> ${route.name}`);
@@ -219,15 +219,21 @@
             });
         }
 
-        // Gestion de la soumission du formulaire (Ajout de route)
+        // Gestion de la soumission du formulaire (Ajout de route réaligné)
         document.getElementById('routeForm').addEventListener('submit', function(e) {
             e.preventDefault();
             
+            // Extraction stricte et conversion des inputs
+            const latS = parseFloat(document.getElementById('latStart').value);
+            const lngS = parseFloat(document.getElementById('lngStart').value);
+            const latE = parseFloat(document.getElementById('latEnd').value);
+            const lngE = parseFloat(document.getElementById('lngEnd').value);
+
             const newRoute = {
                 id: Date.now(),
                 name: document.getElementById('routeName').value,
-                start: [parseFloat(document.getElementById('latStart').value), parseFloat(document.getElementById('lngStart').value)],
-                end: [parseFloat(document.getElementById('latEnd').value), parseFloat(document.getElementById('lngEnd').value)],
+                start: [latS, lngS], // Assure l'ordre [Latitude, Longitude]
+                end: [latE, lngE],   // Liaison corrigée des coordonnées d'arrivée
                 color: document.getElementById('routeColor').value,
                 status: document.getElementById('routeStatus').value,
                 contact: document.getElementById('routeContact').value
@@ -236,7 +242,10 @@
             routes.push(newRoute);
             saveAndRender();
             
-            // Réinitialiser le formulaire (sauf les couleurs/status par confort)
+            // Ajustement automatique de la vue de la carte sur la nouvelle route
+            map.fitBounds([newRoute.start, newRoute.end], { padding: [50, 50] });
+
+            // Réinitialiser le formulaire
             document.getElementById('routeName').value = '';
             document.getElementById('latStart').value = '';
             document.getElementById('lngStart').value = '';
