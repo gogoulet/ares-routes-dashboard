@@ -135,9 +135,10 @@
         // Initialisation de la carte mondiale
         const map = L.map('map').setView([20, 0], 2);
         
-        // Thème de carte sombre (CartoDB DarkMatter)
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-            attribution: '&copy; OpenStreetMap &copy; CARTO'
+        // Option B : OpenStreetMap Standard (Gratuit et sans clé API)
+        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         }).addTo(map);
 
         // Données de démonstration avec format strict [Latitude, Longitude]
