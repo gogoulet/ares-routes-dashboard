@@ -2,319 +2,107 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <title>Tableau de Bord des Routes Ares</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Carte Interactive & Itinéraire Routier</title>
+
+  <!-- 1. Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  
+  <!-- 2. Leaflet Routing Machine CSS (Itinéraires) -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
+  
+  <!-- 3. Leaflet Control Geocoder CSS (Recherche d'adresses) -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
+
   <style>
-    :root {
-      --bg: #0f172a;
-      --card-bg: #1e293b;
-      --text: #f8fafc;
-      --text-muted: #94a3b8;
-      --border: #334155;
-      
-      --status-green: #22c55e;
-      --status-yellow: #eab308;
-      --status-red: #ef4444;
+    * {
+      box-sizing: border-box;
     }
-
-    body {
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background-color: var(--bg);
-      color: var(--text);
+    body, html {
       margin: 0;
-      padding: 2rem;
-    }
-
-    .container {
-      max-width: 1200px;
-      margin: 0 auto;
-    }
-
-    header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 1.5rem;
-    }
-
-    h1 { margin: 0; font-size: 1.6rem; }
-
-    .btn {
-      background: #2563eb;
-      color: white;
-      border: none;
-      padding: 0.5rem 1rem;
-      border-radius: 6px;
-      cursor: pointer;
-      font-weight: 600;
-    }
-    .btn:hover { background: #1d4ed8; }
-    .btn-secondary { background: #475569; }
-    .btn-secondary:hover { background: #334155; }
-    .btn-danger { background: #dc2626; }
-    .btn-danger:hover { background: #b91c1c; }
-
-    .card {
-      background: var(--card-bg);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 1.5rem;
-      margin-bottom: 1.5rem;
-    }
-
-    table {
+      padding: 0;
+      height: 100%;
       width: 100%;
-      border-collapse: collapse;
-      text-align: left;
+      font-family: Arial, sans-serif;
     }
-
-    th, td {
-      padding: 0.75rem 0.5rem;
-      border-bottom: 1px solid var(--border);
-      font-size: 0.9rem;
+    #map {
+      height: 100vh;
+      width: 100%;
     }
-
-    th { color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; }
-
-    .status-badge {
-      display: inline-block;
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-      margin-right: 0.4rem;
-      vertical-align: middle;
-    }
-    .status-vert { background-color: var(--status-green); box-shadow: 0 0 8px var(--status-green); }
-    .status-jaune { background-color: var(--status-yellow); box-shadow: 0 0 8px var(--status-yellow); }
-    .status-rouge { background-color: var(--status-red); box-shadow: 0 0 8px var(--status-red); }
-
-    .color-dot {
-      display: inline-block;
-      width: 12px;
-      height: 12px;
-      border-radius: 3px;
-      margin-right: 0.4rem;
-      vertical-align: middle;
-    }
-
-    .form-group {
-      display: flex;
-      gap: 0.75rem;
-      flex-wrap: wrap;
-      margin-bottom: 1rem;
-    }
-
-    input, select {
-      background: var(--bg);
-      border: 1px solid var(--border);
-      color: var(--text);
-      padding: 0.5rem;
-      border-radius: 4px;
-      flex: 1;
-      min-width: 130px;
-    }
-
-    .disabled-row {
-      opacity: 0.35;
-    }
-
-    .action-btn {
-      background: transparent;
-      border: 1px solid var(--border);
-      color: #f87171;
-      padding: 0.25rem 0.5rem;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-    .action-btn:hover { background: rgba(239, 68, 68, 0.1); }
-
-    .coord-text {
-      font-family: monospace;
-      font-size: 0.75rem;
-      color: var(--text-muted);
+    /* Personnalisation du panneau d'itinéraire */
+    .leaflet-routing-container {
+      background-color: white;
+      padding: 10px;
+      border-radius: 8px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+      max-width: 320px;
     }
   </style>
 </head>
 <body>
 
-<div class="container">
-  <header>
-    <h1>Tableau de Bord des Routes (<span id="route-count">0</span>)</h1>
-    <button class="btn btn-secondary" onclick="resetToDefaults()">Réinitialiser aux 81 routes de base</button>
-  </header>
+  <div id="map"></div>
 
-  <!-- Formulaire d'ajout -->
-  <div class="card">
-    <h3>Ajouter une nouvelle route</h3>
-    <form id="add-route-form" onsubmit="addRoute(event)" class="form-group">
-      <input type="text" id="new-name" placeholder="Nom (ex: Paris - Lyon)" required>
-      <input type="text" id="new-start" placeholder="Départ Lat, Lng (ex: 48.85, 2.35)" required>
-      <input type="text" id="new-end" placeholder="Arrivée Lat, Lng (ex: 45.76, 4.83)" required>
-      <input type="text" id="new-contact" placeholder="Contact" value="David Ross" required>
-      <select id="new-status">
-        <option value="vert">Vert (Opérationnel)</option>
-        <option value="jaune">Jaune (Dégradé)</option>
-        <option value="rouge">Rouge (Hors service)</option>
-      </select>
-      <input type="color" id="new-color" value="#3b82f6" style="min-width: 50px; cursor: pointer;">
-      <button type="submit" class="btn">Ajouter</button>
-    </form>
-  </div>
+  <!-- 1. Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  
+  <!-- 2. Leaflet Routing Machine JS -->
+  <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
+  
+  <!-- 3. Leaflet Control Geocoder JS -->
+  <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
 
-  <!-- Tableau des routes -->
-  <div class="card">
-    <table>
-      <thead>
-        <tr>
-          <th>Statut</th>
-          <th>Nom de la route</th>
-          <th>Coordonnées (Départ / Arrivée)</th>
-          <th>Contact</th>
-          <th>État</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody id="routes-table-body">
-        <!-- Rempli dynamiquement en JS -->
-      </tbody>
-    </table>
-  </div>
-</div>
+  <script>
+    // 1. Initialisation de la carte (centrée sur le Québec par défaut)
+    const map = L.map('map').setView([46.5583, -72.7478], 11);
 
-<script>
-  // JSON complet des routes fourni
-  const RAW_ARES_ROUTES = "[{\"id\":1784402327994,\"name\":\"Myanmar - Chine\",\"start\":[20,96.04],\"end\":[22.44,114.03],\"color\":\"#e13bf7\",\"status\":\"jaune\",\"contact\":\"David Ross\"},{\"id\":1784403217138,\"name\":\"Roatan - Mexico\",\"start\":[16.33,-86.53],\"end\":[19.43,-99.13],\"color\":\"#3b82f6\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1784421342468,\"name\":\"Colombie - Mexico \",\"start\":[6.37,-75.37],\"end\":[27.49,-97.23],\"color\":\"#3bf751\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1784421487341,\"name\":\"Tanzanie - Morroco\",\"start\":[5.55,36.08],\"end\":[33.5,7.35],\"color\":\"#f7a93b\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1784421660333,\"name\":\"Sri Lanka - HoChi Minh\",\"start\":[7.04,79.51],\"end\":[10.54,106.37],\"color\":\"#5a3bf7\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1784421850318,\"name\":\"Cortez Pearl\",\"start\":[24.1,-110.19],\"end\":[27.48,-97.24],\"color\":\"#d8f73b\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1784421980173,\"name\":\"Café Honduras\",\"start\":[15.21,-87.58],\"end\":[27.47,-97.24],\"color\":\"#f73b3b\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1784422297214,\"name\":\"Guangzhou - Shangaï\",\"start\":[23.08,113.15],\"end\":[31.15,121.28],\"color\":\"#d83bf7\",\"status\":\"jaune\",\"contact\":\"David Ross\"},{\"id\":1784422390621,\"name\":\"Zhengzhou - Shangaï\",\"start\":[31.15,121.28],\"end\":[34.45,113.37],\"color\":\"#f73bbb\",\"status\":\"jaune\",\"contact\":\"David Ross\"},{\"id\":1784422505198,\"name\":\"Saint Petersburg - Macao\",\"start\":[59.57,30.21],\"end\":[22.12,113.32],\"color\":\"#f73bbb\",\"status\":\"jaune\",\"contact\":\"David Ross\"},{\"id\":1784423106846,\"name\":\"Shangaï - Vancouver\",\"start\":[31.14,121.28],\"end\":[49.17,-123.07],\"color\":\"#c53bf7\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1784423196862,\"name\":\"Vancouver - Toronto\",\"start\":[49.17,-123.07],\"end\":[43.39,-79.23],\"color\":\"#5af73b\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788634422783,\"name\":\"Bruxelles vers Naypyidaw\",\"start\":[50.8503,4.3517],\"end\":[19.7633,96.0785],\"color\":\"#3b82f6\",\"status\":\"jaune\",\"contact\":\"David Ross\"},{\"id\":1788634509655,\"name\":\"Bruxelles - Shanghai\",\"start\":[50.8503,4.3517],\"end\":[31.2304,121.4737],\"color\":\"#d8f73b\",\"status\":\"jaune\",\"contact\":\"David Ross\"},{\"id\":1788634568679,\"name\":\"Bruxelles - Toronto\",\"start\":[50.8503,4.3517],\"end\":[43.6532,-79.3832],\"color\":\"#f7863b\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788634616358,\"name\":\"Édimbourg - Toronto\",\"start\":[55.9533,-3.1883],\"end\":[43.6532,-79.3832],\"color\":\"#f7483b\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788634658655,\"name\":\"Édimbourg - Macao\",\"start\":[55.9533,-3.1883],\"end\":[22.1987,113.5439],\"color\":\"#3bf77a\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788634701151,\"name\":\"Myanmar - Ankara\",\"start\":[19.7633,96.0785],\"end\":[39.9334,32.8597],\"color\":\"#3ba6f7\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788634739903,\"name\":\"Myanmar - Baku\",\"start\":[19.7633,96.0785],\"end\":[40.4093,49.8671],\"color\":\"#863bf7\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788634774391,\"name\":\"Baku - Monaco\",\"start\":[40.4093,49.8671],\"end\":[22.1987,113.5439],\"color\":\"#e13bf7\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788634814479,\"name\":\"Baku - Hong Kong\",\"start\":[40.4093,49.8671],\"end\":[55.9533,-3.1883],\"color\":\"#f73b61\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788634849223,\"name\":\"Baku - Édimbourg\",\"start\":[40.4093,49.8671],\"end\":[55.9533,-3.1883],\"color\":\"#b53bf7\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788634883591,\"name\":\"Baku - Monaco\",\"start\":[40.4093,49.8671],\"end\":[43.7384,7.4246],\"color\":\"#3ef73b\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788634918999,\"name\":\"Zagreb - Détroit\",\"start\":[45.815,15.9819],\"end\":[42.3314,-83.0458],\"color\":\"#3bf79f\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788634955223,\"name\":\"Zagreb - Toronto\",\"start\":[45.815,15.9819],\"end\":[43.6532,-79.3832],\"color\":\"#3bf7e1\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788634991951,\"name\":\"Zagreb - Hong Kong\",\"start\":[45.815,15.9819],\"end\":[22.3193,114.1694],\"color\":\"#3ba6f7\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788635023551,\"name\":\"Skopje - Détroit\",\"start\":[41.9981,21.4254],\"end\":[42.3314,-83.0458],\"color\":\"#f7c53b\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788635056063,\"name\":\"Skopje - Toronto\",\"start\":[41.9981,21.4254],\"end\":[43.6532,-79.3832],\"color\":\"#f77d3b\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788635094351,\"name\":\"Skopje - Hong Kong\",\"start\":[41.9981,21.4254],\"end\":[22.3193,114.1694],\"color\":\"#3bf79f\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788635129215,\"name\":\"Skopje - Macao\",\"start\":[41.9981,21.4254],\"end\":[22.1987,113.5439],\"color\":\"#3b61f7\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788731133479,\"name\":\"Argentine - Brésil\",\"start\":[-34.6037,-58.3816],\"end\":[-23.5505,-46.6333],\"color\":\"#f73b4e\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788731238215,\"name\":\"Argentine - Shanghai\",\"start\":[-34.6037,-58.3816],\"end\":[31.2304,121.4737],\"color\":\"#f73b9f\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788731335647,\"name\":\"Argentine - Chili\",\"start\":[-34.6037,-58.3816],\"end\":[-33.4489,-70.6693],\"color\":\"#903bf7\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788732534656,\"name\":\"Argentine - Mumbai\",\"start\":[-34.6037,-58.3816],\"end\":[19.076,72.8777],\"color\":\"#513bf7\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788734658402,\"name\":\"Argentine - New York\",\"start\":[-34.6037,-58.3816],\"end\":[-23.5505,-46.6333],\"color\":\"#e13bf7\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788734718250,\"name\":\"Chili - Shanghai\",\"start\":[-33.4489,-70.6693],\"end\":[31.2304,121.4737],\"color\":\"#513bf7\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788734761394,\"name\":\"Chili - New York\",\"start\":[-33.4489,-70.6693],\"end\":[40.7128,-74.006],\"color\":\"#3b9cf7\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788734810138,\"name\":\"Chili - Tokyo\",\"start\":[-33.4489,-70.6693],\"end\":[35.6762,139.6503],\"color\":\"#3bf7e1\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788734931282,\"name\":\"Chili - Séoul\",\"start\":[-33.4489,-70.6693],\"end\":[37.5665,126.978],\"color\":\"#3bf7a6\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788734978026,\"name\":\"Chili - Sao Paulo\",\"start\":[-33.4489,-70.6693],\"end\":[-23.5505,-46.6333],\"color\":\"#3bf761\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788735021562,\"name\":\"Canberra - Shanghai\",\"start\":[-35.2809,149.13],\"end\":[31.2304,121.4737],\"color\":\"#a2f73b\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788735066962,\"name\":\"Canberra - Tokyo\",\"start\":[-35.2809,149.13],\"end\":[35.6762,139.6503],\"color\":\"#d8f73b\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788735104834,\"name\":\"Canberra - Séoul\",\"start\":[-35.2809,149.13],\"end\":[37.5665,126.978],\"color\":\"#f7c53b\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788735148874,\"name\":\"Canberra - Mumbai\",\"start\":[-35.2809,149.13],\"end\":[19.076,72.8777],\"color\":\"#f7903b\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788735185482,\"name\":\"Canberra - New York\",\"start\":[-35.2809,149.13],\"end\":[40.7128,-74.006],\"color\":\"#f7613b\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788735284122,\"name\":\"Wellington - Shanghai\",\"start\":[-41.2865,174.7762],\"end\":[31.2304,121.4737],\"color\":\"#f73b61\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788735318274,\"name\":\"Wellington - Sydney\",\"start\":[-41.2865,174.7762],\"end\":[-33.8688,151.2093],\"color\":\"#f73bb2\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788735359986,\"name\":\"Wellington - New York\",\"start\":[-41.2865,174.7762],\"end\":[40.7128,-74.006],\"color\":\"#e13bf7\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788735387986,\"name\":\"Wellington - Tokyo\",\"start\":[-40.2865,174.7762],\"end\":[35.6762,139.6503],\"color\":\"#e13bf7\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788735416651,\"name\":\"Wellington - Séoul\",\"start\":[-41.2865,174.7762],\"end\":[37.5665,126.978],\"color\":\"#a23bf7\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788735467098,\"name\":\"Dublin - NYC\",\"start\":[53.3498,-6.2603],\"end\":[40.7128,-74.006],\"color\":\"#a23bf7\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788735504306,\"name\":\"Dublin - Amsterdam\",\"start\":[53.3498,-6.2603],\"end\":[52.3676,4.9041],\"color\":\"#5a3bf7\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788735536786,\"name\":\"Dublin - Londres\",\"start\":[53.3498,-6.2603],\"end\":[51.5077,-0.1278],\"color\":\"#3b5af7\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788735564700,\"name\":\"Dublin - Berlin\",\"start\":[53.3498,-6.2603],\"end\":[52.52,13.405],\"color\":\"#3b83f7\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788735597283,\"name\":\"Dublin - Bruxelles\",\"start\":[53.3498,-6.2603],\"end\":[50.8503,4.3517],\"color\":\"#3baff7\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788735654779,\"name\":\"Édimbourg - NYC\",\"start\":[55.9533,-3.1883],\"end\":[40.7128,-74.006],\"color\":\"#3bf7f4\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788735684747,\"name\":\"Édimbourg Paris\",\"start\":[55.9533,-3.1883],\"end\":[48.8563,2.3522],\"color\":\"#3bf7a6\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788735716179,\"name\":\"Édimbourg - Amsterdam\",\"start\":[55.9533,-3.1883],\"end\":[52.3676,4.9041],\"color\":\"#3bf77a\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788735743786,\"name\":\"Édimbourg - Berlin\",\"start\":[55.9533,-3.1883],\"end\":[52.52,13.405],\"color\":\"#51f73b\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788735775882,\"name\":\"Édimbourg - Singapour\",\"start\":[55.9533,-3.1883],\"end\":[1.3521,103.8198],\"color\":\"#acf73b\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788735805731,\"name\":\"Édimbourg - Shanghai\",\"start\":[55.9533,-3.1883],\"end\":[31.2304,121.4737],\"color\":\"#f7f13b\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788735880019,\"name\":\"Vaduz - Berlin\",\"start\":[47.141,9.5209],\"end\":[52.52,13.405],\"color\":\"#f7a93b\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788735905890,\"name\":\"Vaduz - NYC\",\"start\":[47.141,9.5209],\"end\":[40.7128,-74.006],\"color\":\"#f7733b\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788735930739,\"name\":\"Vaduz - Vienne\",\"start\":[47.141,9.5209],\"end\":[48.2082,16.3738],\"color\":\"#f73b3b\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788735956579,\"name\":\"Vaduz - Paris\",\"start\":[47.141,9.5209],\"end\":[48.8566,2.3522],\"color\":\"#f73b7d\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788735983994,\"name\":\"Vaduz - Zurich\",\"start\":[47.141,9.5209],\"end\":[47.3769,8.5417],\"color\":\"#f73bbb\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788736029443,\"name\":\"Berlin - NYC\",\"start\":[52.52,13.405],\"end\":[40.7128,-74.006],\"color\":\"#c53bf7\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788736061026,\"name\":\"Berlin - Paris\",\"start\":[52.52,13.405],\"end\":[48.8566,2.3522],\"color\":\"#733bf7\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788736093002,\"name\":\"Berlin - Shanghai\",\"start\":[52.52,13.405],\"end\":[31.2304,121.4737],\"color\":\"#3b51f7\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788736118059,\"name\":\"Berlin - Amsterdam\",\"start\":[52.52,13.405],\"end\":[52.3676,4.9041],\"color\":\"#3b9cf7\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788736154019,\"name\":\"Berlin - Londres\",\"start\":[52.52,13.405],\"end\":[51.5074,-0.1278],\"color\":\"#3bd8f7\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788736196555,\"name\":\"Tallinn - Helsinki\",\"start\":[59.437,24.7535],\"end\":[60.1699,24.9384],\"color\":\"#3bf7f4\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788736230771,\"name\":\"Tallinn - Riga\",\"start\":[59.437,24.7535],\"end\":[56.9496,24.1052],\"color\":\"#3bf7d1\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788736264107,\"name\":\"Tallinn - Vilnius\",\"start\":[59.437,24.7535],\"end\":[54.6872,25.2797],\"color\":\"#3bf783\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788736293779,\"name\":\"Tallinn - Stockholm\",\"start\":[59.407,24.7535],\"end\":[59.3293,18.0686],\"color\":\"#7df73b\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788736321051,\"name\":\"Tallinn - Berlin\",\"start\":[59.437,24.7535],\"end\":[52.52,13.405],\"color\":\"#e1f73b\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788736351652,\"name\":\"Vilnius - Riga\",\"start\":[54.6872,25.2797],\"end\":[56.9496,24.1052],\"color\":\"#f7c53b\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788736379298,\"name\":\"Vilnius - Varsovie\",\"start\":[54.6872,25.2797],\"end\":[52.2297,21.0122],\"color\":\"#f77d3b\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788736420595,\"name\":\"Vilnius - Berlin\",\"start\":[54.6872,25.2797],\"end\":[52.52,13.405],\"color\":\"#783c36\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788736455075,\"name\":\"Vilnius - Amsterdam\",\"start\":[54.6872,25.2797],\"end\":[52.3676,4.9041],\"color\":\"#6d7836\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788736488116,\"name\":\"Vilnius - NYC\",\"start\":[54.6872,25.2797],\"end\":[40.7128,-74.006],\"color\":\"#367841\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788736533771,\"name\":\"Riga - Berlin\",\"start\":[56.9496,24.1052],\"end\":[52.52,13.405],\"color\":\"#366a78\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788736562107,\"name\":\"Riga - Londres\",\"start\":[56.9496,24.1052],\"end\":[51.5074,-0.1278],\"color\":\"#3a3678\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788736589947,\"name\":\"Riga - Stockholm\",\"start\":[56.9496,24.1052],\"end\":[59.3293,18.0686],\"color\":\"#733678\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788736659283,\"name\":\"Varsovie - Berlin\",\"start\":[52.2297,21.0122],\"end\":[52.52,13.405],\"color\":\"#783652\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788736686267,\"name\":\"Varsovie -  Prague\",\"start\":[52.2297,21.0122],\"end\":[50.0755,14.4378],\"color\":\"#783636\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788736717683,\"name\":\"Varsovie - Paris\",\"start\":[52.2297,21.0122],\"end\":[48.8566,2.3522],\"color\":\"#ac6c8b\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788736742635,\"name\":\"Varsovie - Londres\",\"start\":[52.2297,21.0122],\"end\":[51.5074,-0.1278],\"color\":\"#986cac\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788736768891,\"name\":\"Varsovie - Rome\",\"start\":[52.2297,21.0122],\"end\":[41.9028,12.4964],\"color\":\"#746cac\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788736802131,\"name\":\"Prague - Berlin\",\"start\":[50.0755,14.4378],\"end\":[52.52,13.405],\"color\":\"#6c8dac\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788736832851,\"name\":\"Prague - Bratislava\",\"start\":[50.0755,14.4378],\"end\":[48.1486,17.1077],\"color\":\"#6caca2\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788736862083,\"name\":\"Prague - Varsovie\",\"start\":[50.0755,14.4378],\"end\":[52.2297,21.0122],\"color\":\"#6cac74\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788736887427,\"name\":\"Prague - Paris\",\"start\":[50.0755,14.4378],\"end\":[48.8566,2.3522],\"color\":\"#8fac6c\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788736809883,\"name\":\"Prague - Vienne\",\"start\":[50.0755,14.4378],\"end\":[48.2082,16.3738],\"color\":\"#acaa6c\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788736963044,\"name\":\"Pékin - NYC\",\"start\":[39.9042,116.4074],\"end\":[40.7128,-74.006],\"color\":\"#ac866c\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788736996179,\"name\":\"Pékin - Hong Kong\",\"start\":[39.9042,116.4074],\"end\":[22.3193,114.1694],\"color\":\"#ac6c6c\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788737033124,\"name\":\"Pékin - Tokyo\",\"start\":[39.9042,116.4074],\"end\":[35.6762,139.6503],\"color\":\"#8b466e\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788737067260,\"name\":\"Pékin - Séoul\",\"start\":[39.9042,116.4074],\"end\":[37.5665,126.978],\"color\":\"#83468b\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788737104972,\"name\":\"Pékin - Ho Chi Minh\",\"start\":[39.9042,116.4074],\"end\":[10.8231,106.6297],\"color\":\"#4b468b\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788737150748,\"name\":\"Shanghai - Tokyo\",\"start\":[31.2304,121.4737],\"end\":[35.6762,139.6503],\"color\":\"#46768b\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788737177787,\"name\":\"Shanghai - Bruxelles\",\"start\":[31.2304,121.4737],\"end\":[50.8503,4.3517],\"color\":\"#468b6d\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788737211468,\"name\":\"Shanghai - Hong Kong\",\"start\":[31.2304,121.4737],\"end\":[22.3193,114.1694],\"color\":\"#468b4e\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788737242316,\"name\":\"Shanghai - Jakarta\",\"start\":[31.2304,121.4737],\"end\":[-6.2088,106.8456],\"color\":\"#6f8b46\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788737290707,\"name\":\"Hong Kong - Ho Chi Minh\",\"start\":[22.3193,114.1694],\"end\":[10.8231,106.6297],\"color\":\"#8b7c46\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788737318995,\"name\":\"Hong Kong - Dubai\",\"start\":[22.393,114.1694],\"end\":[25.2048,55.2708],\"color\":\"#8b4d46\",\"status\":\"vert\",\"contact\":\"David Ross\"},{\"id\":1788737349835,\"name\":\"Hong Kong - Mumbai\",\"start\":[22.3193,114.1694],\"end\":[19.076,72.8777],\"color\":\"#46748b\",\"status\":\"vert\",\"contact\":\"David Ross\"}]";
+    // 2. Couche OpenStreetMap France (garantit les toponymes en français)
+    L.tileLayer('https://{s}.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png', {
+      maxZoom: 20,
+      attribution: '&copy; OpenStreetMap France | &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+    }).addTo(map);
 
-  // Initialisation des routes par défaut avec 'active: true'
-  const DEFAULT_ROUTES = JSON.parse(RAW_ARES_ROUTES).map(item => ({
-    ...item,
-    active: item.active !== undefined ? item.active : true
-  }));
-
-  // Charger depuis le stockage local ou charger la liste intégrée en dur
-  let routes = JSON.parse(localStorage.getItem('ares_routes_dashboard')) || DEFAULT_ROUTES;
-
-  function saveAndRender() {
-    localStorage.setItem('ares_routes_dashboard', JSON.stringify(routes));
-    render();
-  }
-
-  function render() {
-    const tbody = document.getElementById('routes-table-body');
-    document.getElementById('route-count').innerText = routes.length;
-    tbody.innerHTML = '';
-
-    routes.forEach(route => {
-      const tr = document.createElement('tr');
-      if (!route.active) tr.classList.add('disabled-row');
-
-      const startCoord = Array.isArray(route.start) ? route.start.join(', ') : '';
-      const endCoord = Array.isArray(route.end) ? route.end.join(', ') : '';
-
-      tr.innerHTML = `
-        <td>
-          <span class="status-badge status-${route.status}"></span>
-          <select onchange="updateStatus(${route.id}, this.value)">
-            <option value="vert" ${route.status === 'vert' ? 'selected' : ''}>Vert</option>
-            <option value="jaune" ${route.status === 'jaune' ? 'selected' : ''}>Jaune</option>
-            <option value="rouge" ${route.status === 'rouge' ? 'selected' : ''}>Rouge</option>
-          </select>
-        </td>
-        <td>
-          <span class="color-dot" style="background-color: ${route.color || '#3b82f6'};"></span>
-          <strong>${escapeHtml(route.name)}</strong>
-        </td>
-        <td class="coord-text">
-          D: [${startCoord}]<br>
-          A: [${endCoord}]
-        </td>
-        <td>
-          <input type="text" value="${escapeHtml(route.contact || '')}" 
-                 onchange="updateContact(${route.id}, this.value)" 
-                 style="width: 100%; min-width: auto;">
-        </td>
-        <td>
-          <label style="cursor: pointer;">
-            <input type="checkbox" ${route.active ? 'checked' : ''} onchange="toggleActive(${route.id})">
-            ${route.active ? 'Active' : 'Masquée'}
-          </label>
-        </td>
-        <td>
-          <button class="action-btn" onclick="deleteRoute(${route.id})">Supprimer</button>
-        </td>
-      `;
-      tbody.appendChild(tr);
+    // 3. Module de recherche d'adresses (Nominatim avec réponses prioritaires en français)
+    const geocoder = L.Control.Geocoder.nominatim({
+      geocodingQueryParams: {
+        'accept-language': 'fr'
+      }
     });
-  }
 
-  // --- Fonctions de gestion ---
+    L.Control.geocoder({
+      query: '',
+      placeholder: 'Rechercher une adresse...',
+      defaultMarkGeocode: false,
+      geocoder: geocoder
+    })
+    .on('markgeocode', function(e) {
+      const bbox = e.geocode.bbox;
+      const poly = L.polygon([
+        bbox.getSouthEast(),
+        bbox.getNorthEast(),
+        bbox.getNorthWest(),
+        bbox.getSouthWest()
+      ]);
+      map.fitBounds(poly.getBounds());
+      
+      L.marker(e.geocode.center).addTo(map)
+        .bindPopup(e.geocode.name)
+        .openPopup();
+    })
+    .addTo(map);
 
-  function updateStatus(id, newStatus) {
-    const route = routes.find(r => r.id === id);
-    if (route) {
-      route.status = newStatus;
-      saveAndRender();
-    }
-  }
-
-  function updateContact(id, newContact) {
-    const route = routes.find(r => r.id === id);
-    if (route) {
-      route.contact = newContact;
-      saveAndRender();
-    }
-  }
-
-  function toggleActive(id) {
-    const route = routes.find(r => r.id === id);
-    if (route) {
-      route.active = !route.active;
-      saveAndRender();
-    }
-  }
-
-  function addRoute(e) {
-    e.preventDefault();
-    
-    const startInput = document.getElementById('new-start').value.split(',').map(n => parseFloat(n.trim()));
-    const endInput = document.getElementById('new-end').value.split(',').map(n => parseFloat(n.trim()));
-
-    const newRoute = {
-      id: Date.now(),
-      name: document.getElementById('new-name').value,
-      start: startInput.length === 2 && !isNaN(startInput[0]) ? startInput : [0, 0],
-      end: endInput.length === 2 && !isNaN(endInput[0]) ? endInput : [0, 0],
-      contact: document.getElementById('new-contact').value,
-      status: document.getElementById('new-status').value,
-      color: document.getElementById('new-color').value,
-      active: true
-    };
-
-    routes.unshift(newRoute);
-    saveAndRender();
-    document.getElementById('add-route-form').reset();
-  }
-
-  function deleteRoute(id) {
-    if (confirm("Voulez-vous supprimer cette route ?")) {
-      routes = routes.filter(r => r.id !== id);
-      saveAndRender();
-    }
-  }
-
-  function resetToDefaults() {
-    if (confirm("Réinitialiser avec les 81 routes permanentes d'origine ?")) {
-      routes = JSON.parse(JSON.stringify(DEFAULT_ROUTES));
-      saveAndRender();
-    }
-  }
-
-  function escapeHtml(str) {
-    return String(str).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[m]);
-  }
-
-  // Lancement initial
-  render();
-</script>
+    // 4. Module d'itinéraire routier (OSRM gratuit)
+    const routingControl = L.Routing.control({
+      waypoints: [
+        L.latLng(46.5583, -72.7478), // Point A (ex. Shawinigan)
+        L.latLng(46.3432, -72.5433)  // Point B (ex. Trois-Rivières)
+      ],
+      routeWhileDragging: true,
+      language: 'fr', // Instructions de guidage en français
+      geocoder: geocoder, // Permet de chercher directement dans les champs départ/arrivée
+      collapsible: true   // Permet de réduire le panneau d'itinéraire
+    }).addTo(map);
+  </script>
 
 </body>
 </html>
