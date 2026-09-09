@@ -1,108 +1,308 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Carte Interactive & Itinéraire Routier</title>
-
-  <!-- 1. Leaflet CSS -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  
-  <!-- 2. Leaflet Routing Machine CSS (Itinéraires) -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
-  
-  <!-- 3. Leaflet Control Geocoder CSS (Recherche d'adresses) -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
-
-  <style>
-    * {
-      box-sizing: border-box;
-    }
-    body, html {
-      margin: 0;
-      padding: 0;
-      height: 100%;
-      width: 100%;
-      font-family: Arial, sans-serif;
-    }
-    #map {
-      height: 100vh;
-      width: 100%;
-    }
-    /* Personnalisation du panneau d'itinéraire */
-    .leaflet-routing-container {
-      background-color: white;
-      padding: 10px;
-      border-radius: 8px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-      max-width: 320px;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ares World - Suivi des Routes</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        #map { height: 480px; width: 100%; z-index: 1; }
+    </style>
 </head>
-<body>
+<body class="bg-slate-900 text-slate-100 font-sans">
 
-  <div id="map"></div>
+    <div class="container mx-auto p-4 space-y-6">
+        
+        <!-- Header -->
+        <header class="flex justify-between items-center border-b border-slate-700 pb-4">
+            <div>
+                <h1 class="text-2xl font-bold tracking-wide text-amber-500">ARES OPERATIONAL ROUTE DASHBOARD</h1>
+                <p class="text-xs text-slate-400">Gestion et état de santé des couloirs logistiques</p>
+            </div>
+            <div class="text-right">
+                <span class="inline-flex items-center rounded-md bg-slate-800 px-3 py-1 text-xs font-medium text-slate-400 ring-1 ring-inset ring-slate-700">Ares World & Opsec</span>
+            </div>
+        </header>
 
-  <!-- 1. Leaflet JS -->
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  
-  <!-- 2. Leaflet Routing Machine JS -->
-  <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
-  
-  <!-- 3. Leaflet Control Geocoder JS -->
-  <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+        <!-- Main Content Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            <!-- Left: Map & Table (2/3 width) -->
+            <div class="lg:col-span-2 space-y-6">
+                <!-- Map Card -->
+                <div class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden shadow-xl">
+                    <div class="p-4 bg-slate-800 border-b border-slate-700 flex justify-between items-center">
+                        <h2 class="font-semibold text-sm uppercase tracking-wider text-slate-300">Cartographie Mondiale des Flux</h2>
+                        <span class="text-xs text-slate-500">Tracés dynamiques par route</span>
+                    </div>
+                    <div id="map"></div>
+                </div>
 
-  <script>
-    // 1. Initialisation de la carte (centrée sur le Québec par défaut)
-    const map = L.map('map').setView([46.5583, -72.7478], 11);
+                <!-- Table Card -->
+                <div class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden shadow-xl">
+                    <div class="p-4 border-b border-slate-700">
+                        <h2 class="font-semibold text-sm uppercase tracking-wider text-slate-300">Registre des Routes Actives</h2>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-slate-800 text-slate-400 text-xs uppercase tracking-wider border-b border-slate-700">
+                                    <th class="p-4 text-center">Active</th>
+                                    <th class="p-4">Route</th>
+                                    <th class="p-4 text-center">Couleur</th>
+                                    <th class="p-4">État de Santé</th>
+                                    <th class="p-4">Contact d'Urgence</th>
+                                    <th class="p-4 text-right">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="routeTableBody" class="divide-y divide-slate-700 text-sm">
+                                <!-- Injecté par JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
 
-    // 2. Couche OpenStreetMap France (garantit les toponymes en français)
-    L.tileLayer('https://{s}.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png', {
-      maxZoom: 20,
-      attribution: '&copy; OpenStreetMap France | &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-    }).addTo(map);
+            <!-- Right: Add Route Form (1/3 width) -->
+            <div class="space-y-6">
+                <div class="bg-slate-800 rounded-xl border border-slate-700 p-5 shadow-xl sticky top-6">
+                    <h2 class="font-semibold text-sm uppercase tracking-wider text-slate-300 mb-4 pb-2 border-b border-slate-700">Ajouter un Couloir Logistique</h2>
+                    
+                    <form id="routeForm" class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1">Nom de la Route</label>
+                            <input type="text" id="routeName" placeholder="Ex: Shawinigan -> Montréal" required class="w-full rounded-lg bg-slate-900 border border-slate-700 p-2.5 text-sm text-white focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                        </div>
 
-    // 3. Module de recherche d'adresses (Nominatim avec réponses prioritaires en français)
-    const geocoder = L.Control.Geocoder.nominatim({
-      geocodingQueryParams: {
-        'accept-language': 'fr'
-      }
-    });
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="block text-xs font-medium text-slate-400 mb-1">Lat Départ (Y)</label>
+                                <input type="number" step="any" id="latStart" placeholder="46.55" required class="w-full rounded-lg bg-slate-900 border border-slate-700 p-2.5 text-sm text-white focus:outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-400 mb-1">Lng Départ (X)</label>
+                                <input type="number" step="any" id="lngStart" placeholder="-72.74" required class="w-full rounded-lg bg-slate-900 border border-slate-700 p-2.5 text-sm text-white focus:outline-none">
+                            </div>
+                        </div>
 
-    L.Control.geocoder({
-      query: '',
-      placeholder: 'Rechercher une adresse...',
-      defaultMarkGeocode: false,
-      geocoder: geocoder
-    })
-    .on('markgeocode', function(e) {
-      const bbox = e.geocode.bbox;
-      const poly = L.polygon([
-        bbox.getSouthEast(),
-        bbox.getNorthEast(),
-        bbox.getNorthWest(),
-        bbox.getSouthWest()
-      ]);
-      map.fitBounds(poly.getBounds());
-      
-      L.marker(e.geocode.center).addTo(map)
-        .bindPopup(e.geocode.name)
-        .openPopup();
-    })
-    .addTo(map);
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="block text-xs font-medium text-slate-400 mb-1">Lat Arrivée (Y)</label>
+                                <input type="number" step="any" id="latEnd" placeholder="45.50" required class="w-full rounded-lg bg-slate-900 border border-slate-700 p-2.5 text-sm text-white focus:outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-400 mb-1">Lng Arrivée (X)</label>
+                                <input type="number" step="any" id="lngEnd" placeholder="-73.56" required class="w-full rounded-lg bg-slate-900 border border-slate-700 p-2.5 text-sm text-white focus:outline-none">
+                            </div>
+                        </div>
 
-    // 4. Module d'itinéraire routier (OSRM gratuit)
-    const routingControl = L.Routing.control({
-      waypoints: [
-        L.latLng(46.5583, -72.7478), // Point A (ex. Shawinigan)
-        L.latLng(46.3432, -72.5433)  // Point B (ex. Trois-Rivières)
-      ],
-      routeWhileDragging: true,
-      language: 'fr', // Instructions de guidage en français
-      geocoder: geocoder, // Permet de chercher directement dans les champs départ/arrivée
-      collapsible: true   // Permet de réduire le panneau d'itinéraire
-    }).addTo(map);
-  </script>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="block text-xs font-medium text-slate-400 mb-1">Couleur Tracé</label>
+                                <input type="color" id="routeColor" value="#3b82f6" class="w-full h-10 rounded-lg bg-slate-900 border border-slate-700 p-1 cursor-pointer">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-400 mb-1">État de Santé</label>
+                                <select id="routeStatus" class="w-full h-10 rounded-lg bg-slate-900 border border-slate-700 px-2 text-sm text-white focus:outline-none">
+                                    <option value="vert">Vert (Opérationnel)</option>
+                                    <option value="jaune">Jaune (Alerte / Ralenti)</option>
+                                    <option value="rouge">Rouge (Compromis / Bloqué)</option>
+                                </select>
+                            </div>
+                        </div>
 
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1">Contact Référent (Point Focal)</label>
+                            <input type="text" id="routeContact" placeholder="Nom / Signal / Téléphone" required class="w-full rounded-lg bg-slate-900 border border-slate-700 p-2.5 text-sm text-white focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                        </div>
+
+                        <button type="submit" class="w-full bg-amber-600 hover:bg-amber-500 text-white font-medium rounded-lg text-sm px-5 py-2.5 text-center transition-colors cursor-pointer">
+                            Injecter la Route
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Logic Script -->
+    <script>
+        // Initialisation de la carte
+        const map = L.map('map').setView([20, 0], 2);
+        
+        // OpenStreetMap France pour les toponymes en français
+        L.tileLayer('https://{s}.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png', {
+            maxZoom: 20,
+            attribution: '&copy; OpenStreetMap France | &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        }).addTo(map);
+
+        // Données par défaut (avec statut active: true par défaut)
+        const defaultRoutes = [
+            { id: 1, name: "Myanmar -> Chine (Secteur Nord)", start: [21.91, 95.95], end: [25.04, 102.70], color: "#3b82f6", status: "vert", contact: "Op_Alpha (Signal)", active: true },
+            { id: 2, name: "Mexique -> Canada (Transit Ouest)", start: [25.68, -100.31], end: [45.50, -73.56], color: "#00f0ff", status: "jaune", contact: "Log_Bravo (Secure Desk)", active: true },
+            { id: 3, name: "Honduras -> Mexique (Couloir Sud)", start: [14.10, -87.21], end: [16.75, -93.11], color: "#ef4444", status: "rouge", contact: "Local_Charlie (Sat-Phone)", active: false }
+        ];
+
+        let routes = JSON.parse(localStorage.getItem('ares_routes')) || defaultRoutes;
+        let mapLayers = [];
+
+        function saveAndRender() {
+            localStorage.setItem('ares_routes', JSON.stringify(routes));
+            renderDashboard();
+        }
+
+        // 1. Modifier l'état d'activation (Afficher / Masquer sur la carte)
+        function toggleRouteActive(id) {
+            const route = routes.find(r => r.id === id);
+            if (route) {
+                route.active = !route.active;
+                saveAndRender();
+            }
+        }
+
+        // 2. Modifier le statut (Vert, Jaune, Rouge)
+        function updateRouteStatus(id, newStatus) {
+            const route = routes.find(r => r.id === id);
+            if (route) {
+                route.status = newStatus;
+                saveAndRender();
+            }
+        }
+
+        // 3. Modifier le contact d'urgence
+        function updateRouteContact(id, newContact) {
+            const route = routes.find(r => r.id === id);
+            if (route) {
+                route.contact = newContact;
+                localStorage.setItem('ares_routes', JSON.stringify(routes));
+            }
+        }
+
+        // 4. Supprimer une route
+        function deleteRoute(id) {
+            routes = routes.filter(r => r.id !== id);
+            saveAndRender();
+        }
+
+        function renderDashboard() {
+            // Nettoyer la carte
+            mapLayers.forEach(layer => map.removeLayer(layer));
+            mapLayers = [];
+
+            // Nettoyer le tableau
+            const tbody = document.getElementById('routeTableBody');
+            tbody.innerHTML = '';
+
+            // Boucler sur les routes
+            routes.forEach(route => {
+                // --- AJOUT SUR LA CARTE (uniquement si la route est active) ---
+                if (route.active) {
+                    const startMarker = L.circleMarker(route.start, { 
+                        radius: 5, 
+                        color: '#ffffff', 
+                        fillColor: route.color, 
+                        fillOpacity: 1 
+                    }).addTo(map).bindPopup(`<b>Départ:</b> ${route.name}`);
+                    
+                    const endMarker = L.circleMarker(route.end, { 
+                        radius: 6, 
+                        color: route.color, 
+                        fillColor: '#000000', 
+                        fillOpacity: 0.7 
+                    }).addTo(map).bindPopup(`<b>Destination:</b> ${route.name}`);
+
+                    // Adaptation visuelle selon l'état de santé
+                    const dashArray = route.status === 'jaune' ? '6, 6' : route.status === 'rouge' ? '2, 8' : null;
+                    const strokeColor = route.status === 'vert' ? (route.color || '#22c55e') : route.status === 'jaune' ? '#eab308' : '#ef4444';
+
+                    const polyline = L.polyline([route.start, route.end], {
+                        color: strokeColor,
+                        weight: 4,
+                        opacity: 0.85,
+                        dashArray: dashArray
+                    }).addTo(map).bindPopup(`<b>Route:</b> ${route.name}<br><b>Statut:</b> ${route.status.toUpperCase()}<br><b>Contact:</b> ${route.contact}`);
+
+                    mapLayers.push(startMarker, endMarker, polyline);
+                }
+
+                // --- AJOUT DANS LE TABLEAU ---
+                const tr = document.createElement('tr');
+                tr.className = `hover:bg-slate-700/50 transition-colors ${!route.active ? 'opacity-50 bg-slate-900/40' : ''}`;
+                tr.innerHTML = `
+                    <!-- Toggle Active -->
+                    <td class="p-4 text-center">
+                        <input type="checkbox" ${route.active ? 'checked' : ''} onchange="toggleRouteActive(${route.id})" class="w-4 h-4 rounded bg-slate-900 border-slate-700 text-amber-500 focus:ring-amber-500 cursor-pointer">
+                    </td>
+
+                    <!-- Nom de la route -->
+                    <td class="p-4 font-medium text-slate-200">${route.name}</td>
+
+                    <!-- Indicateur Couleur -->
+                    <td class="p-4 text-center">
+                        <span class="inline-block w-4 h-4 rounded-full border border-slate-600" style="background-color: ${route.color}"></span>
+                    </td>
+
+                    <!-- Changement d'état (Vert / Jaune / Rouge) -->
+                    <td class="p-4">
+                        <select onchange="updateRouteStatus(${route.id}, this.value)" class="bg-slate-900 border border-slate-700 text-xs rounded-lg px-2 py-1 text-white focus:outline-none focus:ring-1 focus:ring-amber-500">
+                            <option value="vert" ${route.status === 'vert' ? 'selected' : ''}>🟢 Vert (Opérationnel)</option>
+                            <option value="jaune" ${route.status === 'jaune' ? 'selected' : ''}>🟡 Jaune (Ralenti)</option>
+                            <option value="rouge" ${route.status === 'rouge' ? 'selected' : ''}>🔴 Rouge (Bloqué)</option>
+                        </select>
+                    </td>
+
+                    <!-- Édition directe du Contact -->
+                    <td class="p-4">
+                        <input type="text" value="${route.contact}" onchange="updateRouteContact(${route.id}, this.value)" class="w-full bg-slate-900/60 border border-slate-700/60 rounded px-2 py-1 text-xs text-slate-300 focus:outline-none focus:border-amber-500 font-mono">
+                    </td>
+
+                    <!-- Bouton Supprimer -->
+                    <td class="p-4 text-right">
+                        <button onclick="deleteRoute(${route.id})" class="text-xs text-red-400 hover:text-red-300 font-medium cursor-pointer">Supprimer</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Soumission du formulaire d'ajout
+        document.getElementById('routeForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const latS = parseFloat(document.getElementById('latStart').value);
+            const lngS = parseFloat(document.getElementById('lngStart').value);
+            const latE = parseFloat(document.getElementById('latEnd').value);
+            const lngE = parseFloat(document.getElementById('lngEnd').value);
+
+            const newRoute = {
+                id: Date.now(),
+                name: document.getElementById('routeName').value,
+                start: [latS, lngS],
+                end: [latE, lngE],
+                color: document.getElementById('routeColor').value,
+                status: document.getElementById('routeStatus').value,
+                contact: document.getElementById('routeContact').value,
+                active: true
+            };
+
+            routes.push(newRoute);
+            saveAndRender();
+            
+            // Centrer la carte sur la nouvelle route
+            map.fitBounds([newRoute.start, newRoute.end], { padding: [50, 50] });
+
+            // Réinitialiser le formulaire
+            this.reset();
+        });
+
+        // Charger le tableau et la carte au démarrage
+        renderDashboard();
+    </script>
 </body>
 </html>
